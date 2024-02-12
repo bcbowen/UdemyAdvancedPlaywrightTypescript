@@ -1,20 +1,14 @@
 import { test, expect } from "@playwright/test";
-import { faker } from "@faker-js/faker";
+import SignupPage from "../pages/SignupPage";
+import TodoPage from "../pages/TodoPage";
 import User from "../models/User";
+
 test("should be able to register in our app", async ({ page }) => {
-  const user: User = new User(
-    faker.person.firstName(),
-    faker.person.lastName(),
-    faker.internet.email(),
-    "Password1!"
-  );
-  await page.goto("/signup");
-  await page.type("[data-testid=first-name]", user.getFirstName());
-  await page.type("[data-testid=last-name]", user.getLastName());
-  await page.type("[data-testid=email]", user.getEmail());
-  await page.type("[data-testid=password]", user.getPassword());
-  await page.type("[data-testid=confirm-password]", user.getPassword());
-  await page.click("[data-testid=submit]");
-  const welcomeMessage = page.locator("[data-testid=welcome]");
+  const user: User = User.getUser();
+  const signupPage = new SignupPage();
+  await signupPage.load(page);
+  await signupPage.signup(page, user);
+  const todoPage = new TodoPage();
+  const welcomeMessage = todoPage.getWelcomeMessageElement(page);
   await expect(welcomeMessage).toBeVisible();
 });

@@ -1,122 +1,39 @@
 import { test, expect } from "@playwright/test";
-import { faker } from "@faker-js/faker";
+
 import User from "../models/User";
+import SignupPage from "../pages/SignupPage";
+import TodoPage from "../pages/TodoPage";
+import NewTodoPage from "../pages/NewTodoPage";
 
 test("Should be able to add new todo", async ({ page, request, context }) => {
-  const user = new User(
-    faker.person.firstName(),
-    faker.person.lastName(),
-    faker.internet.email(),
-    "Password1!"
-  );
+  const user = User.getUser();
+  const signupPage = new SignupPage();
+  await signupPage.apiSignup(request, user, context);
 
-  const response = await request.post("/api/v1/users/register", {
-    data: {
-      email: user.getEmail(),
-      password: user.getPassword(),
-      firstName: user.getFirstName(),
-      lastName: user.getLastName(),
-    },
-  });
+  const todoPage = new TodoPage();
+  const newTodoPage = new NewTodoPage();
+  await newTodoPage.load(page);
+  const item = "Get Bent!";
+  await newTodoPage.addTodo(page, item);
 
-  const responseBody = await response.json();
-  const accessToken = responseBody.access_token;
-  const firstName = responseBody.firstName;
-  const userId = responseBody.userID;
-
-  await context.addCookies([
-    {
-      name: "access_token",
-      value: accessToken,
-      url: "https://todo.qacart.com",
-    },
-    {
-      name: "firstName",
-      value: firstName,
-      url: "https://todo.qacart.com",
-    },
-    {
-      name: "userID",
-      value: userId,
-      url: "https://todo.qacart.com",
-    },
-  ]);
-
-  await page.goto("/todo/new");
-  await page.click("data-testid=add");
-  await page.type("[data-testid=new-todo]", "Get Bent!");
-  await page.click("[data-testid=submit-newTask]");
-  const todoItem = page.locator("[data-testid=todo-item]");
-  expect(await todoItem.textContent()).toEqual("Get Bent!");
+  const todoItem = await todoPage.getTodoItem(page);
+  expect(await todoItem.textContent()).toEqual(item);
 });
 
 test("Should be able to delete todo", async ({ page, request, context }) => {
-  await page.goto("signup");
+  const user = User.getUser();
 
-  const user = new User(
-    faker.person.firstName(),
-    faker.person.lastName(),
-    faker.internet.email(),
-    "Password1!"
-  );
+  const signupPage = new SignupPage();
+  await signupPage.apiSignup(request, user, context);
 
-  const response = await request.post("/api/v1/users/register", {
-    data: {
-      email: user.getEmail(),
-      password: user.getPassword(),
-      firstName: user.getFirstName(),
-      lastName: user.getLastName(),
-    },
-  });
+  const newTodoPage = new NewTodoPage();
+  await newTodoPage.addTodoViaApi(request, user);
 
-  const responseBody = await response.json();
-  const accessToken = responseBody.access_token;
-  const firstName = responseBody.firstName;
-  const userId = responseBody.userID;
+  const todoPage = new TodoPage();
+  await todoPage.load(page);
+  await todoPage.deleteTodo(page);
 
-  await context.addCookies([
-    {
-      name: "access_token",
-      value: accessToken,
-      url: "https://todo.qacart.com",
-    },
-    {
-      name: "firstName",
-      value: firstName,
-      url: "https://todo.qacart.com",
-    },
-    {
-      name: "userID",
-      value: userId,
-      url: "https://todo.qacart.com",
-    },
-  ]);
+  const noTodosMessage = await todoPage.getNoTodosMessage(page);
 
-  /*
-  await page.type("[data-testid=first-name]", faker.person.firstName());
-  await page.type("[data-testid=last-name]", faker.person.lastName());
-  await page.type("[data-testid=email]", faker.internet.email());
-  await page.type("[data-testid=password]", "Password1!");
-  await page.type("[data-testid=confirm-password]", "Password1!");
-  await page.click("[data-testid=submit]");
-  const welcomeMessage = page.locator("[data-testid=welcome]");
-  await expect(welcomeMessage).toBeVisible();await page.click("data-testid=add");
-  */
-  await request.post("/api/v1/tasks", {
-    data: {
-      isCompleted: false,
-      item: "Get Bent!",
-    },
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-  /*
-  await page.goto("/todo/new");
-  await page.type("[data-testid=new-todo]", "Get Bent!");
-  */
-  await page.goto("/todo");
-  await page.click("[data-testid=delete]");
-  const noTodosMessage = page.locator("[data-testid=no-todos]");
   await expect(noTodosMessage).toBeVisible();
 });
